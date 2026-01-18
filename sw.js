@@ -1,11 +1,12 @@
 
-const CACHE_NAME = 'protrack-v1';
+const CACHE_NAME = 'protrack-v2';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
+  '/',
+  '/index.html',
+  '/manifest.json',
   'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap',
+  'https://cdn-icons-png.flaticon.com/512/2964/2964514.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,8 +34,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests
   if (event.request.method !== 'GET') return;
+
+  // Handle navigation requests (e.g. clicking the home screen icon)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/');
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
@@ -43,7 +53,6 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(event.request).then((response) => {
-        // Don't cache if not a valid response or if it's an API call to Gemini
         if (!response || response.status !== 200 || response.type !== 'basic' || event.request.url.includes('generativelanguage.googleapis.com')) {
           return response;
         }
@@ -54,9 +63,6 @@ self.addEventListener('fetch', (event) => {
         });
 
         return response;
-      }).catch(() => {
-        // Fallback for offline if fetching fails
-        return caches.match('./index.html');
       });
     })
   );
